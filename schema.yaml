@@ -374,8 +374,6 @@ components:
           format: int64
           minimum: 0
           example: 1000000000000
-        is_ready:
-          type: boolean
     FileSystem:
       type: object
       properties:

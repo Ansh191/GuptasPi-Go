@@ -1,12 +1,18 @@
 package main
 
 import (
+	"github.com/gorilla/mux"
+	"guptaspi/info"
 	"log"
 	"net/http"
 )
 
 func main() {
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	r := mux.NewRouter()
+	info.AddInfoRouter(r)
+	http.Handle("/", r)
+
+	if err := http.ListenAndServe(":5000", nil); err != nil {
 		log.Fatalf("Error: %v", err)
 	}
 }
