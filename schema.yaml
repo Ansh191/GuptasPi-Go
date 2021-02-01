@@ -1,0 +1,133 @@
+openapi: 3.0.0
+info:
+  version: 1.0.0
+  title: GuptasPi
+servers:
+  - url: 'http://localhost:5000'
+paths:
+  /info:
+    get:
+      description: Gets information on the Network Drives available
+      responses:
+        '200':
+          description: A list of network drives
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Drive'
+  /filesystem/{volume}:
+    get:
+      description: Gets a folder's children, seperated into files and directories
+      parameters:
+        - in: path
+          name: volume
+          schema:
+            type: string
+          required: true
+          description: Volume label of the drive to access
+        - in: query
+          name: folder
+          schema:
+            type: string
+          required: true
+          description: Path of the folder from the root of the drive
+        - in: query
+          name: hidden
+          schema:
+            type: boolean
+          required: true
+          description: Whether hidden folders and files should be returned
+      responses:
+        '200':
+          description: A list of folders and files in the directory
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  directories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Directory'
+                  files:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/File'
+components:
+  schemas:
+    Drive:
+      type: object
+      properties:
+        name:
+          type: string
+        volume_label:
+          type: string
+        available_free_space:
+          type: integer
+          format: int64
+          minimum: 0
+        total_free_space:
+          type: integer
+          format: int64
+          minimum: 0
+        total_size:
+          type: integer
+          format: int64
+          minimum: 0
+        is_ready:
+          type: boolean
+    FileSystem:
+      type: object
+      properties:
+        name:
+          type: string
+          format: date-time
+        file_attributes:
+          type: integer
+          minimum: 0
+        extension:
+          type: string
+        creation_time:
+          type: string
+          format: date-time
+        creation_time_utc:
+          type: string
+          format: date-time
+        last_access_time:
+          type: string
+          format: date-time
+        last_access_time_utc:
+          type: string
+          format: date-time
+        last_write_time:
+          type: string
+          format: date-time
+        last_write_time_utc:
+          type: string
+          format: date-time
+    Directory:
+      allOf:
+        - $ref: '#/components/schemas/FileSystem'
+    File:
+      allOf:
+        - $ref: '#/components/schemas/FileSystem'
+        - type: object
+          properties:
+            is_read_only:
+              type: boolean
+            length:
+              type: integer
+              format: int64
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
