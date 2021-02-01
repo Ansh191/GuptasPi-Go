@@ -62,6 +62,10 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/File'
+        400:
+          description: Bad Request
+        404:
+          description: Volume was not found or directory not found
   /upload/{volume}:
     post:
       description: Creation extension of the tus protocol. Sets up file upload and provides location to send chunks.
@@ -355,7 +359,7 @@ components:
       properties:
         name:
           type: string
-          example: G:\
+          example: G
         volume_label:
           type: string
           example: G_Drive

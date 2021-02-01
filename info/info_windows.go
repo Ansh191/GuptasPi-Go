@@ -1,3 +1,5 @@
+// +build windows
+
 package info
 
 import (
@@ -5,15 +7,42 @@ import (
 	"github.com/gorilla/mux"
 	"golang.org/x/sys/windows"
 	"net/http"
+	"sync"
 	"syscall"
 )
 
 type Drive struct {
-	Name               string
+	Path               string
 	VolumeLabel        string
 	AvailableFreeSpace uint64
 	TotalFreeSpace     uint64
 	TotalSize          uint64
+}
+
+var driveMap = map[string]*Drive{}
+var lock = sync.RWMutex{}
+
+func GetDrive(volumeLabel string) *Drive {
+	lock.RLock()
+	if len(driveMap) == 0 {
+		lock.RUnlock()
+		populateDriveMap()
+	}
+	lock.RLock()
+	defer lock.RUnlock()
+	return driveMap[volumeLabel]
+}
+
+func populateDriveMap() {
+	lock.Lock()
+	defer lock.Unlock()
+	for _, letter := range getNetworkDrives() {
+		if drive, err := createDrive(letter); err != nil {
+			continue
+		} else {
+			driveMap[drive.VolumeLabel] = drive
+		}
+	}
 }
 
 // AddInfoRouter installs endpoints into main router located in server.go.
@@ -25,18 +54,22 @@ func AddInfoRouter(r *mux.Router) {
 // getInfo corresponds to the GET /info endpoint.
 // This endpoint returns information on the network drives available to the server.
 func getInfo(w http.ResponseWriter, _ *http.Request) {
-	networkDrives := getNetworkDrives()
-	var drives []*Drive
+	w.Header().Set("Content-Type", "application/json")
 
-	for _, letter := range networkDrives {
-		if drive, err := createDrive(letter); err != nil {
-			continue
-		} else {
-			drives = append(drives, drive)
-		}
+	networkDrives := getNetworkDrives()
+
+	lock.RLock()
+	if len(driveMap) != len(networkDrives) {
+		lock.RUnlock()
+		populateDriveMap()
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	lock.RLock()
+	defer lock.RUnlock()
+	var drives []*Drive
+	for _, drive := range driveMap {
+		drives = append(drives, drive)
+	}
 	_ = json.NewEncoder(w).Encode(drives)
 }
 
@@ -51,7 +84,7 @@ func createDrive(letter string) (*Drive, error) {
 	diskSpace, err := getDiskSpace(rootPath)
 
 	return &Drive{
-		Name:               rootPath,
+		Path:               rootPath,
 		VolumeLabel:        volumeName,
 		AvailableFreeSpace: diskSpace[0],
 		TotalFreeSpace:     diskSpace[1],
