@@ -8,6 +8,8 @@ paths:
   /info:
     get:
       description: Gets information on the Network Drives available
+      tags:
+        - Info
       responses:
         200:
           description: A list of network drives
@@ -20,6 +22,8 @@ paths:
   /filesystem/{volume}:
     get:
       description: Gets a folder's children, seperated into files and directories
+      tags:
+        - Filesystem
       parameters:
         - in: path
           name: volume
@@ -61,6 +65,8 @@ paths:
   /upload/{volume}:
     post:
       description: Creation extension of the tus protocol. Sets up file upload and provides location to send chunks.
+      tags:
+        - Upload
       parameters:
         - in: path
           name: volume
@@ -137,6 +143,8 @@ paths:
   /upload/{id}:
     head:
       description: Provides information about an upload.
+      tags:
+        - Upload
       parameters:
         - in: path
           name: id
@@ -190,6 +198,8 @@ paths:
           description: Upload not found
     patch:
       description: Uploads data to the server
+      tags:
+        - Upload
       parameters:
         - in: path
           name: id
@@ -279,6 +289,8 @@ paths:
           description: Server failed to write chunk to file
     delete:
       description: Terminates upload from server.
+      tags:
+        - Upload
       parameters:
         - in: path
           name: id
@@ -309,6 +321,8 @@ paths:
   /upload:
     options:
       description: Defines properties and extensions of the Tus Configuration of the server.
+      tags:
+        - Upload
       responses:
         204:
           description: Tus Configuration described in header content
