@@ -9,7 +9,7 @@ paths:
     get:
       description: Gets information on the Network Drives available
       responses:
-        '200':
+        200:
           description: A list of network drives
           content:
             application/json:
@@ -25,22 +25,25 @@ paths:
           name: volume
           schema:
             type: string
+            example: G_Drive
           required: true
           description: Volume label of the drive to access
         - in: query
           name: folder
           schema:
             type: string
+            example: /folder/folder2
           required: true
           description: Path of the folder from the root of the drive
         - in: query
           name: hidden
           schema:
             type: boolean
-          required: true
+            default: false
+          required: false
           description: Whether hidden folders and files should be returned
       responses:
-        '200':
+        200:
           description: A list of folders and files in the directory
           content:
             application/json:
@@ -55,6 +58,282 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/File'
+  /upload/{volume}:
+    post:
+      description: Creation extension of the tus protocol. Sets up file upload and provides location to send chunks.
+      parameters:
+        - in: path
+          name: volume
+          schema:
+            type: string
+            example: G_Drive
+          required: true
+          description: Volume label of the drive to upload to.
+        - in: query
+          name: overwrite
+          schema:
+            type: boolean
+            default: false
+          required: false
+          description: Whether to overwrite if file already exists.
+        - in: header
+          name: Upload-Length
+          schema:
+            type: integer
+            format: int64
+            example: 1024
+          required: false
+          description: Size of file in bytes. If omitted, Upload-Defer-Length MUST be set to 1.
+        - in: header
+          name: Tus-Resumable
+          schema:
+            type: string
+            example: 1.0.0
+          required: true
+          description: Tus version.
+        - in: header
+          name: Upload-Metadata
+          schema:
+            type: string
+            example: filename L2ZvbGRlci9maWxlLnR4dA==,
+          required: true
+          description: Metadata about the file. Consists of comma seperated key-value pairs. The keys and values must be seperated by a space.
+        - in: header
+          name: Upload-Defer-Length
+          schema:
+            type: integer
+            example: 1
+          required: false
+          description: If set to 1, Upload-Length must not be provided. This tells the server that the size of the file is unknown at the time.
+      responses:
+        201:
+          description: The upload was succesfully started.
+          headers:
+            Tus-Resumable:
+              schema:
+                type: string
+                example: 1.0.0
+              description: Tus version
+            Upload-Expires:
+              schema:
+                type: string
+                format: date-time
+                example: 2006-01-02T15:04:05Z07:00
+              description: Expiration datetime of the upload.
+            Location:
+              schema:
+                type: string
+                format: url
+                example: http://localhost:5000/upload/123e4567e89b12d3a456426655440000
+              description: Location to send chunks to.
+        400:
+          description: Bad Request
+        405:
+          description: Non-Matching Tus Version
+        409:
+          description: File already exists and overwrite is set to false
+        500:
+          description: Server failed to create file
+  /upload/{id}:
+    head:
+      description: Provides information about an upload.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+            example: 123e4567e89b12d3a456426655440000
+          required: true
+          description: Upload ID
+        - in: header
+          name: Tus-Resumable
+          schema:
+            type: string
+            example: 1.0.0
+          required: true
+          description: Tus version
+      responses:
+        200:
+          description: Upload was found and information returned
+          headers:
+            Upload-Offset:
+              schema:
+                type: integer
+                format: int64
+                minimum: 0
+                example: 0
+              description: Offset position from start of file
+            Upload-Expires:
+              schema:
+                type: string
+                format: date-time
+                example: 2006-01-02T15:04:05Z07:00
+              description: Expiration datetime of the upload
+            Tus-Resumable:
+              schema:
+                type: string
+                example: 1.0.0
+              description: Tus version
+            Upload-Length:
+              schema:
+                type: integer
+                format: int64
+                example: 1024
+              description: File size in bytes. Omitted if file size is unknown
+            Upload-Defer-Length:
+              schema:
+                type: integer
+                example: 1
+              description: Set to 1 if file size is unknown
+        404:
+          description: Upload not found
+    patch:
+      description: Uploads data to the server
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+            example: 123e4567e89b12d3a456426655440000
+          required: true
+          description: Upload ID
+        - in: header
+          name: Tus-Resumable
+          schema:
+            type: string
+            example: 1.0.0
+          required: true
+          description: Tus version
+        - in: header
+          name: Upload-Offset
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+            example: 0
+          required: true
+          description: Offset from beginning of file where chunk belongs
+        - in: header
+          name: Upload-Checksum
+          schema:
+            type: string
+            example: md5 1bc29b36f623ba82aaf6724fd3b16718
+          required: false
+          description: Checksum algorithm and Checksum seperated by a space
+        - in: header
+          name: Upload-Defer-Length
+          schema:
+            type: integer
+            example: 1
+          required: false
+          description: MUST be set to 1 if upload still has an unknown size
+        - in: header
+          name: Upload-Length
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+            example: 1024
+          required: false
+          description: If upload was set-up with an unknown size, once size is known, Upload-Length MUST be set the size of the file in bytes.
+      requestBody:
+        required: true
+        content:
+          application/offset+octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        204:
+          description: Chunk was successfully recieved and added to file
+          headers:
+            Tus-Resumable:
+              schema:
+                type: string
+                example: 1.0.0
+              description: Tus Version
+            Upload-Offset:
+              schema:
+                type: integer
+                format: int64
+                minimum: 0
+                example: 0
+              description: New offset position from start of file after upload. Equals old_offset + chunk_size.
+            Upload-Exires:
+              schema:
+                type: string
+                format: date-time
+                example: 2006-01-02T15:04:05Z07:00
+              description: Expiration datetime of upload
+        400:
+          description: Bad Request
+        404:
+          description: Upload not found
+        405:
+          description: Non-Matching Tus Version
+        409:
+          description: Offset on server doesn't match offset in header
+        500:
+          description: Server failed to write chunk to file
+    delete:
+      description: Terminates upload from server.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+            example: 123e4567e89b12d3a456426655440000
+          required: true
+          description: Upload ID
+        - in: header
+          name: Tus-Resumable
+          schema:
+            type: string
+            example: 1.0.0
+          required: true
+          description: Tus version
+      responses:
+        204:
+          description: Upload was successfully terminated
+          headers:
+            Tus-Resumable:
+              schema:
+                type: string
+                example: 1.0.0
+              description: Tus Version
+        404:
+          description: Upload was not found
+  /upload:
+    options:
+      description: Defines properties and extensions of the Tus Configuration of the server.
+      responses:
+        204:
+          description: Tus Configuration described in header content
+          headers:
+            Tus-Resumable:
+              schema:
+                type: string
+                example: 1.0.0
+              description: Tus Resumable Version
+            Tus-Version:
+              schema:
+                type: string
+                example: 1.0.0,0.2.2,0.2.1
+              description: Comma-seperated list of supported tus versions
+            Tus-Extension:
+              schema:
+                type: string
+                example: creation,checksum,expiration,termination
+              description: Comma-seperated list of implemented tus extensions
+            Tus-Checksum-Algorithm:
+              schema:
+                type: string
+                example: sah1,md5,crc32
+              required: false
+              description: Comma-seperated list of supported checksum algorithms
 components:
   schemas:
     Drive:
@@ -62,20 +341,25 @@ components:
       properties:
         name:
           type: string
+          example: G:\
         volume_label:
           type: string
+          example: G_Drive
         available_free_space:
           type: integer
           format: int64
           minimum: 0
+          example: 1000000000
         total_free_space:
           type: integer
           format: int64
           minimum: 0
+          example: 1000000000
         total_size:
           type: integer
           format: int64
           minimum: 0
+          example: 1000000000000
         is_ready:
           type: boolean
     FileSystem:
@@ -83,7 +367,6 @@ components:
       properties:
         name:
           type: string
-          format: date-time
         file_attributes:
           type: integer
           minimum: 0
