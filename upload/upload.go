@@ -7,7 +7,6 @@ import (
 	"guptaspi/info"
 	"log"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -28,6 +27,8 @@ var lock = sync.RWMutex{}
 func AddUploadRouter(r *mux.Router) {
 	r.HandleFunc("/upload/{volume}", startUpload).Methods("POST")
 	r.HandleFunc("/upload/{id}", headUpload).Methods("HEAD")
+	r.HandleFunc("/upload/{id}", patchUpload).Methods("PATCH")
+	r.HandleFunc("/upload", options).Methods("OPTIONS")
 }
 
 func startUpload(w http.ResponseWriter, r *http.Request) {
@@ -106,45 +107,8 @@ func startUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// File creation
-	var file *os.File
-	if !overwrite {
-		file, err = os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0777)
-	} else {
-		file, err = os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE, 0777)
-	}
-	if err != nil {
-		log.Printf("File Creation error: %v", err)
-		if err.Error() == "open "+filePath+": The file exists." {
-			w.WriteHeader(409)
-			return
-		}
-		w.WriteHeader(500)
-		return
-	}
-
-	_, err = file.Seek(int64(uploadLength-1), 0)
-	if err != nil {
-		log.Printf("File Seek error: %v", err)
-		w.WriteHeader(500)
-		if err := file.Close(); err != nil {
-			log.Printf("Failed to close file: %v", err)
-		}
-		return
-	}
-
-	_, err = file.Write([]byte{0})
-	if err != nil {
-		log.Printf("File Write error: %v", err)
-		w.WriteHeader(500)
-		if err := file.Close(); err != nil {
-			log.Printf("Failed to close file: %v", err)
-		}
-		return
-	}
-
-	if err := file.Close(); err != nil {
-		log.Printf("Failed to close file: %v", err)
-	}
+	c := make(chan int)
+	go createFile(filePath, overwrite, uploadLength, c)
 
 	// UUID generation
 	id, err := uuid.NewRandom()
@@ -161,6 +125,12 @@ func startUpload(w http.ResponseWriter, r *http.Request) {
 		ExpirationDate: time.Now().UTC().Add(time.Hour * time.Duration(1)),
 	}
 
+	result := <-c
+	if result != 201 {
+		w.WriteHeader(result)
+		return
+	}
+
 	lock.Lock()
 	uploadMap[id] = &upload
 	lock.Unlock()
@@ -174,19 +144,9 @@ func startUpload(w http.ResponseWriter, r *http.Request) {
 func headUpload(w http.ResponseWriter, r *http.Request) {
 	idString := mux.Vars(r)["id"]
 
-	id, err := uuid.Parse(idString)
+	upload, err := getUploadFromId(idString)
 	if err != nil {
-		log.Printf("Error parsing uuid: %v", err)
 		w.WriteHeader(400)
-		return
-	}
-
-	lock.RLock()
-	upload, ok := uploadMap[id]
-	lock.RUnlock()
-
-	if !ok {
-		w.WriteHeader(404)
 		return
 	}
 
@@ -204,17 +164,106 @@ func headUpload(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 }
 
-func processMetadata(metadataText string) map[string]string {
-	pairs := strings.Split(metadataText, ",")
-	metadata := make(map[string]string, len(pairs))
+func patchUpload(w http.ResponseWriter, r *http.Request) {
+	idString := mux.Vars(r)["id"]
 
-	for _, pair := range pairs {
-		keyValue := strings.Split(pair, " ")
-		if len(keyValue) == 2 {
-			metadata[keyValue[0]] = keyValue[1]
+	upload, err := getUploadFromId(idString)
+	if err != nil {
+		w.WriteHeader(400)
+		return
+	}
+
+	var fileSize uint64
+	if upload.FileSize == 0 {
+		if deferLength := r.Header.Get("Upload-Defer-Length"); deferLength != "" {
+			if deferLength != "1" {
+				w.WriteHeader(400)
+				return
+			}
+			fileSize = 0
+		} else if uploadLength := r.Header.Get("Upload-Length"); uploadLength != "" {
+			fileSize, err = strconv.ParseUint(uploadLength, 10, 64)
+			if err != nil {
+				w.WriteHeader(400)
+				return
+			}
 		} else {
-			metadata[keyValue[0]] = ""
+			w.WriteHeader(400)
+			return
+		}
+	} else {
+		fileSize = upload.FileSize
+	}
+
+	if uploadOffset, err := strconv.ParseUint(r.Header.Get("Upload-Offset"), 10, 64); err != nil {
+		w.WriteHeader(400)
+		return
+	} else if uploadOffset != upload.Offset {
+		w.WriteHeader(409)
+		return
+	}
+
+	if r.ContentLength <= 0 {
+		w.Header().Add("Tus-Resumable", "1.0.0")
+		w.Header().Add("Upload-Offset", strconv.FormatUint(upload.Offset, 10))
+		w.Header().Add("Upload-Expires", upload.ExpirationDate.Format(time.RFC3339))
+		w.WriteHeader(204)
+		return
+	}
+
+	buffer := make([]byte, r.ContentLength)
+	_, err = r.Body.Read(buffer)
+	if err != nil {
+		log.Printf("Error reading body: %v", err)
+		w.WriteHeader(500)
+		return
+	}
+
+	if uploadChecksum := r.Header.Get("Upload-Checksum"); uploadChecksum != "" {
+		parts := strings.Split(uploadChecksum, " ")
+		if len(parts) != 2 {
+			w.WriteHeader(400)
+			return
+		}
+		algorithm := parts[0]
+		hash := parts[1]
+		if !verifyChecksum(buffer, algorithm, hash) {
+			w.WriteHeader(400)
+			return
 		}
 	}
-	return metadata
+
+	c := make(chan int)
+	go writeToFile(upload.FilePath, buffer, int64(upload.Offset), c)
+
+	if code := <-c; code != 204 {
+		w.WriteHeader(code)
+		return
+	}
+	upload.Offset += uint64(len(buffer))
+	upload.FileSize = fileSize
+
+	if upload.FileSize != 0 && upload.FileSize == upload.Offset {
+		log.Printf("Upload to %s finished", upload.FilePath)
+		id, _ := uuid.Parse(idString)
+		lock.Lock()
+		delete(uploadMap, id)
+		lock.Unlock()
+	}
+
+	w.Header().Add("Tus-Resumable", "1.0.0")
+	w.Header().Add("Upload-Offset", strconv.FormatUint(upload.Offset, 10))
+	w.Header().Add("Upload-Expires", upload.ExpirationDate.Format(time.RFC3339))
+
+	w.WriteHeader(204)
+	return
+}
+
+func options(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Add("Tus-Resumable", "1.0.0")
+	w.Header().Add("Tus-Version", "1.0.0")
+	w.Header().Add("Tus-Extension", "creation,checksum,expiration,termination")
+	w.Header().Add("Tus-Checksum-Algorithm", "sha1,md5,crc32")
+
+	w.WriteHeader(204)
 }
