@@ -7,6 +7,7 @@ import (
 	"guptaspi/info"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -28,6 +29,7 @@ func AddUploadRouter(r *mux.Router) {
 	r.HandleFunc("/upload/{volume}", startUpload).Methods("POST")
 	r.HandleFunc("/upload/{id}", headUpload).Methods("HEAD")
 	r.HandleFunc("/upload/{id}", patchUpload).Methods("PATCH")
+	r.HandleFunc("/upload/{id}", terminateUpload).Methods("DELETE")
 	r.HandleFunc("/upload", options).Methods("OPTIONS")
 }
 
@@ -257,6 +259,33 @@ func patchUpload(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(204)
 	return
+}
+
+func terminateUpload(w http.ResponseWriter, r *http.Request) {
+	idString := mux.Vars(r)["id"]
+	id, err := uuid.Parse(idString)
+	if err != nil {
+		log.Printf("Error parsing uuid: %v", err)
+		w.WriteHeader(400)
+		return
+	}
+
+	lock.Lock()
+	upload, ok := uploadMap[id]
+	if !ok {
+		w.WriteHeader(404)
+		return
+	}
+	delete(uploadMap, id)
+	lock.Unlock()
+
+	err = os.Remove(upload.FilePath)
+	if err != nil {
+		log.Printf("Error removing file: %v", err)
+	}
+
+	w.Header().Add("Tus-Resumable", "1.0.0")
+	w.WriteHeader(204)
 }
 
 func options(w http.ResponseWriter, _ *http.Request) {
