@@ -11,40 +11,40 @@ import (
 )
 
 type FileSystem struct {
-	Name              string
-	FileAttributes    uint32
-	Extension         string
-	CreationTime      time.Time
-	CreationTimeUtc   time.Time
-	LastAccessTime    time.Time
-	LastAccessTimeUtc time.Time
-	LastWriteTime     time.Time
-	LastWriteTimeUtc  time.Time
+	Name              string    `json:"name"`
+	FileAttributes    uint32    `json:"file_attributes"`
+	Extension         string    `json:"extension"`
+	CreationTime      time.Time `json:"creation_time"`
+	CreationTimeUtc   time.Time `json:"creation_time_utc"`
+	LastAccessTime    time.Time `json:"last_access_time"`
+	LastAccessTimeUtc time.Time `json:"last_access_time_utc"`
+	LastWriteTime     time.Time `json:"last_write_time"`
+	LastWriteTimeUtc  time.Time `json:"last_write_time_utc"`
 }
 
 type DirectoryInfo struct {
-	Name              string
-	FileAttributes    uint32
-	Extension         string
-	CreationTime      time.Time
-	CreationTimeUtc   time.Time
-	LastAccessTime    time.Time
-	LastAccessTimeUtc time.Time
-	LastWriteTime     time.Time
-	LastWriteTimeUtc  time.Time
+	Name              string    `json:"name"`
+	FileAttributes    uint32    `json:"file_attributes"`
+	Extension         string    `json:"extension"`
+	CreationTime      time.Time `json:"creation_time"`
+	CreationTimeUtc   time.Time `json:"creation_time_utc"`
+	LastAccessTime    time.Time `json:"last_access_time"`
+	LastAccessTimeUtc time.Time `json:"last_access_time_utc"`
+	LastWriteTime     time.Time `json:"last_write_time"`
+	LastWriteTimeUtc  time.Time `json:"last_write_time_utc"`
 }
 
 type FileInfo struct {
-	Name              string
-	FileAttributes    uint32
-	Extension         string
-	CreationTime      time.Time
-	CreationTimeUtc   time.Time
-	LastAccessTime    time.Time
-	LastAccessTimeUtc time.Time
-	LastWriteTime     time.Time
-	LastWriteTimeUtc  time.Time
-	Length            uint64
+	Name              string    `json:"name"`
+	FileAttributes    uint32    `json:"file_attributes"`
+	Extension         string    `json:"extension"`
+	CreationTime      time.Time `json:"creation_time"`
+	CreationTimeUtc   time.Time `json:"creation_time_utc"`
+	LastAccessTime    time.Time `json:"last_access_time"`
+	LastAccessTimeUtc time.Time `json:"last_access_time_utc"`
+	LastWriteTime     time.Time `json:"last_write_time"`
+	LastWriteTimeUtc  time.Time `json:"last_write_time_utc"`
+	Length            uint64    `json:"length"`
 }
 
 func createFiles(files []os.FileInfo, hidden bool) (di []DirectoryInfo, fi []FileInfo) {

@@ -12,8 +12,8 @@ import (
 )
 
 type GetFolderChildrenReturn struct {
-	Directories []DirectoryInfo
-	Files       []FileInfo
+	Directories []DirectoryInfo `json:"directories"`
+	Files       []FileInfo      `json:"files"`
 }
 
 func AddFileSystemRouter(r *mux.Router) {

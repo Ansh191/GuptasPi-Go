@@ -10,40 +10,40 @@ import (
 )
 
 type FileSystem struct {
-	Name           string
-	FileAttributes os.FileMode
-	Extension      string
-	CTime          time.Time
-	CTimeUtc       time.Time
-	ATime          time.Time
-	ATimeUtc       time.Time
-	MTime          time.Time
-	MTimeUtc       time.Time
+	Name           string      `json:"name"`
+	FileAttributes os.FileMode `json:"file_attributes"`
+	Extension      string      `json:"extension"`
+	CTime          time.Time   `json:"c_time"`
+	CTimeUtc       time.Time   `json:"c_time_utc"`
+	ATime          time.Time   `json:"a_time"`
+	ATimeUtc       time.Time   `json:"a_time_utc"`
+	MTime          time.Time   `json:"m_time"`
+	MTimeUtc       time.Time   `json:"m_time_utc"`
 }
 
 type DirectoryInfo struct {
-	Name           string
-	FileAttributes os.FileMode
-	Extension      string
-	CTime          time.Time
-	CTimeUtc       time.Time
-	ATime          time.Time
-	ATimeUtc       time.Time
-	MTime          time.Time
-	MTimeUtc       time.Time
+	Name           string      `json:"name"`
+	FileAttributes os.FileMode `json:"file_attributes"`
+	Extension      string      `json:"extension"`
+	CTime          time.Time   `json:"c_time"`
+	CTimeUtc       time.Time   `json:"c_time_utc"`
+	ATime          time.Time   `json:"a_time"`
+	ATimeUtc       time.Time   `json:"a_time_utc"`
+	MTime          time.Time   `json:"m_time"`
+	MTimeUtc       time.Time   `json:"m_time_utc"`
 }
 
 type FileInfo struct {
-	Name           string
-	FileAttributes os.FileMode
-	Extension      string
-	CTime          time.Time
-	CTimeUtc       time.Time
-	ATime          time.Time
-	ATimeUtc       time.Time
-	MTime          time.Time
-	MTimeUtc       time.Time
-	length         int64
+	Name           string      `json:"name"`
+	FileAttributes os.FileMode `json:"file_attributes"`
+	Extension      string      `json:"extension"`
+	CTime          time.Time   `json:"c_time"`
+	CTimeUtc       time.Time   `json:"c_time_utc"`
+	ATime          time.Time   `json:"a_time"`
+	ATimeUtc       time.Time   `json:"a_time_utc"`
+	MTime          time.Time   `json:"m_time"`
+	MTimeUtc       time.Time   `json:"m_time_utc"`
+	length         int64       `json:"length"`
 }
 
 func createFiles(files []os.FileInfo, hidden bool) (di []DirectoryInfo, fi []FileInfo) {

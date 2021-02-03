@@ -91,7 +91,7 @@ func (amw *authentication) Initialize() {
 
 func (amw *authentication) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/login" || r.RequestURI == "/createUser" {
+		if r.RequestURI == "/auth/login" {
 			next.ServeHTTP(w, r)
 			return
 		}

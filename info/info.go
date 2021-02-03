@@ -8,11 +8,11 @@ import (
 )
 
 type Drive struct {
-	Path               string
-	VolumeLabel        string
-	AvailableFreeSpace uint64
-	TotalFreeSpace     uint64
-	TotalSize          uint64
+	Path               string `json:"path"`
+	VolumeLabel        string `json:"volume_label"`
+	AvailableFreeSpace uint64 `json:"available_free_space"`
+	TotalFreeSpace     uint64 `json:"total_free_space"`
+	TotalSize          uint64 `json:"total_size"`
 }
 
 var driveMap = map[string]*Drive{}
