@@ -19,6 +19,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Drive'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
   /filesystem/{volume}:
     get:
       description: Gets a folder's children, seperated into files and directories
@@ -64,6 +66,8 @@ paths:
                       $ref: '#/components/schemas/File'
         400:
           description: Bad Request
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
         404:
           description: Volume was not found or directory not found
   /upload/{volume}:
@@ -138,6 +142,8 @@ paths:
               description: Location to send chunks to.
         400:
           description: Bad Request
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
         405:
           description: Non-Matching Tus Version
         409:
@@ -198,6 +204,8 @@ paths:
                 type: integer
                 example: 1
               description: Set to 1 if file size is unknown
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
         404:
           description: Upload not found
     patch:
@@ -283,6 +291,8 @@ paths:
               description: Expiration datetime of upload
         400:
           description: Bad Request
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
         404:
           description: Upload not found
         405:
@@ -320,6 +330,8 @@ paths:
                 type: string
                 example: 1.0.0
               description: Tus Version
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
         404:
           description: Upload was not found
   /upload:
@@ -327,6 +339,8 @@ paths:
       description: Defines properties and extensions of the Tus Configuration of the server.
       tags:
         - Upload
+      security:
+        - {}
       responses:
         204:
           description: Tus Configuration described in header content
