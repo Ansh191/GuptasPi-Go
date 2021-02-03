@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"github.com/google/uuid"
 	"hash/crc32"
 	"log"
@@ -84,7 +85,7 @@ func getUploadFromId(idString string) (*Upload, error) {
 	lock.RUnlock()
 
 	if !ok {
-		return nil, err
+		return nil, errors.New("404: ID not found")
 	}
 
 	return upload, nil

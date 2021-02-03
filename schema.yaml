@@ -352,6 +352,106 @@ paths:
                 example: sah1,md5,crc32
               required: false
               description: Comma-seperated list of supported checksum algorithms
+  /auth/login:
+    get:
+      description: Login and get access and refresh token for bearer authentication.
+      tags:
+        - Authentication
+      security:
+        - basicAuth: [ ]
+      responses:
+        200:
+          description: Login was successful and the tokens were returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+        400:
+          description: Missing or bad basic auth header
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        500:
+          description: Internal service error in processing tokens
+  /auth/createUser:
+    post:
+      description: Create new user
+      tags:
+        - Authentication
+      requestBody:
+        description: JSON containing username and password
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  required: true
+                password:
+                  type: string
+                  format: password
+                  required: true
+      responses:
+        201:
+          description: Account was created
+        400:
+          description: Bad Request
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        500:
+          description: Error creating account
+  /auth/logout:
+    get:
+      description: Logout user and invalidate access token.
+      tags:
+        - Authentication
+      responses:
+        200:
+          description: Successfully logged out
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+  /auth/refresh:
+    post:
+      description: Refresh access token using refresh token
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        description: Refresh token
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token:
+                  type: string
+                  required: true
+      responses:
+        200:
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+        400:
+          description: Bad Request
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        403:
+          description: Could not create new tokens, use login endpoint
+        422:
+          description: Unprocessable Entity, could not process tokens
 components:
   schemas:
     Drive:
@@ -430,3 +530,17 @@ components:
           format: int32
         message:
           type: string
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    UnauthorizedError:
+      description: Authentication information is missing or invalid
+
+security:
+  - bearerAuth: [ ]

@@ -148,6 +148,10 @@ func headUpload(w http.ResponseWriter, r *http.Request) {
 
 	upload, err := getUploadFromId(idString)
 	if err != nil {
+		if err.Error()[0:3] == "404" {
+			w.WriteHeader(404)
+			return
+		}
 		w.WriteHeader(400)
 		return
 	}

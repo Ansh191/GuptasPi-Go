@@ -13,6 +13,17 @@ import (
 func main() {
 	r := mux.NewRouter()
 
+	r.Use(loggingMiddleware)
+
+	amw := authentication{}
+	amw.Initialize()
+
+	r.Use(amw.Middleware)
+	r.HandleFunc("/auth/login", amw.Login).Methods("GET")
+	r.HandleFunc("/auth/logout", amw.Logout).Methods("GET")
+	r.HandleFunc("/auth/createUser", amw.CreateUser).Methods("POST")
+	r.HandleFunc("/auth/refresh", amw.Refresh).Methods("POST")
+
 	info.AddInfoRouter(r)
 	filesystem.AddFileSystemRouter(r)
 	upload.AddUploadRouter(r)
