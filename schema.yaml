@@ -389,14 +389,15 @@ paths:
           application/json:
             schema:
               type: object
+              required:
+                - username
+                - password
               properties:
                 username:
                   type: string
-                  required: true
                 password:
                   type: string
                   format: password
-                  required: true
       responses:
         201:
           description: Account was created
@@ -428,10 +429,11 @@ paths:
           application/json:
             schema:
               type: object
+              required:
+                - refresh_token
               properties:
                 refresh_token:
                   type: string
-                  required: true
       responses:
         200:
           description: Token refreshed
